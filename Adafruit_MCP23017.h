@@ -18,6 +18,10 @@
 #define Wire TinyWireM
 #endif
 
+#ifdef DEBUG
+#include <Streaming.h>
+#endif
+
 /*!
  * @brief MCP23017 main class
  */
@@ -25,6 +29,7 @@ class Adafruit_MCP23017 {
 public:
   void begin(uint8_t addr, TwoWire *theWire = &Wire);
   void begin(TwoWire *theWire = &Wire);
+  void begin(uint8_t addr, uint8_t sda, uint8_t scl);
 
   void pinMode(uint8_t p, uint8_t d);
   void digitalWrite(uint8_t p, uint8_t d);
@@ -42,6 +47,8 @@ public:
 
 private:
   uint8_t i2caddr;
+  uint8_t i2cMCP23017addr;
+  TwoWire _twoWire;
   TwoWire *_wire; //!< pointer to a TwoWire object
 
   uint8_t bitForPin(uint8_t pin);

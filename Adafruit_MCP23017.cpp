@@ -70,11 +70,15 @@ uint8_t Adafruit_MCP23017::regForPin(uint8_t pin, uint8_t portAaddr,
  */
 uint8_t Adafruit_MCP23017::readRegister(uint8_t addr) {
   // read the current GPINTEN
-  _wire->beginTransmission(MCP23017_ADDRESS | i2caddr);
+  Serial << endl << "   - begin transmition(i2cMCP23017addr=" << i2cMCP23017addr << "| i2caddr=" << i2caddr << ")";
+  _wire->beginTransmission(i2cMCP23017addr | i2caddr);
   wiresend(addr, _wire);
+  Serial << endl << "   - addr=" << addr;
   _wire->endTransmission();
-  _wire->requestFrom(MCP23017_ADDRESS | i2caddr, 1);
-  return wirerecv(_wire);
+  _wire->requestFrom(i2cMCP23017addr | i2caddr, 1);
+  uint8_t ret = wirerecv(_wire);
+    Serial << endl << "   - ret=" << ret;
+  return ret;
 }
 
 /**
@@ -82,7 +86,10 @@ uint8_t Adafruit_MCP23017::readRegister(uint8_t addr) {
  */
 void Adafruit_MCP23017::writeRegister(uint8_t regAddr, uint8_t regValue) {
   // Write the register
-  _wire->beginTransmission(MCP23017_ADDRESS | i2caddr);
+  _wire->beginTransmission(i2cMCP23017addr | i2caddr);
+
+Serial << endl << "#### WRITING ADDR="<< _HEX(i2cMCP23017addr | i2caddr) << ", REG=" << regAddr << " v=" << regValue;
+
   wiresend(regAddr, _wire);
   wiresend(regValue, _wire);
   _wire->endTransmission();
@@ -120,6 +127,7 @@ void Adafruit_MCP23017::begin(uint8_t addr, TwoWire *theWire) {
     addr = 7;
   }
   i2caddr = addr;
+  i2cMCP23017addr = MCP23017_ADDRESS;
   _wire = theWire;
 
   _wire->begin();
@@ -136,6 +144,29 @@ void Adafruit_MCP23017::begin(uint8_t addr, TwoWire *theWire) {
  * @param theWire the I2C object to use, defaults to &Wire
  */
 void Adafruit_MCP23017::begin(TwoWire *theWire) { begin(0, theWire); }
+
+
+/*!
+ * Initializes the MCP23017 with its real I2C address
+ * @param mcp23017addr MCP23017 address
+ * @param sda I2C SDA gpio
+ * @param scl I2C SCL gpio
+ * @param theWire the I2C object to use, defaults to &Wire
+ */
+void Adafruit_MCP23017::begin(uint8_t mcp23017addr, uint8_t sda, uint8_t scl) {
+  i2caddr = 0;
+  i2cMCP23017addr = mcp23017addr;
+
+  _wire = &_twoWire;
+  _wire->begin(sda,scl);
+
+  // set defaults!
+  // all inputs on port A and B
+  writeRegister(MCP23017_IODIRA, 0xff);
+  writeRegister(MCP23017_IODIRB, 0xff);
+
+
+}
 
 /**
  * Sets the pin mode to either INPUT or OUTPUT
@@ -155,11 +186,11 @@ uint16_t Adafruit_MCP23017::readGPIOAB() {
   uint8_t a;
 
   // read the current GPIO output latches
-  _wire->beginTransmission(MCP23017_ADDRESS | i2caddr);
+  _wire->beginTransmission(i2cMCP23017addr | i2caddr);
   wiresend(MCP23017_GPIOA, _wire);
   _wire->endTransmission();
 
-  _wire->requestFrom(MCP23017_ADDRESS | i2caddr, 2);
+  _wire->requestFrom(i2cMCP23017addr | i2caddr, 2);
   a = wirerecv(_wire);
   ba = wirerecv(_wire);
   ba <<= 8;
@@ -176,7 +207,7 @@ uint16_t Adafruit_MCP23017::readGPIOAB() {
 uint8_t Adafruit_MCP23017::readGPIO(uint8_t b) {
 
   // read the current GPIO output latches
-  _wire->beginTransmission(MCP23017_ADDRESS | i2caddr);
+  _wire->beginTransmission(i2cMCP23017addr | i2caddr);
   if (b == 0)
     wiresend(MCP23017_GPIOA, _wire);
   else {
@@ -184,7 +215,7 @@ uint8_t Adafruit_MCP23017::readGPIO(uint8_t b) {
   }
   _wire->endTransmission();
 
-  _wire->requestFrom(MCP23017_ADDRESS | i2caddr, 1);
+  _wire->requestFrom(i2cMCP23017addr | i2caddr, 1);
   return wirerecv(_wire);
 }
 
@@ -193,7 +224,7 @@ uint8_t Adafruit_MCP23017::readGPIO(uint8_t b) {
  * implementing a multiplexed matrix and want to get a decent refresh rate.
  */
 void Adafruit_MCP23017::writeGPIOAB(uint16_t ba) {
-  _wire->beginTransmission(MCP23017_ADDRESS | i2caddr);
+  _wire->beginTransmission(i2cMCP23017addr | i2caddr);
   wiresend(MCP23017_GPIOA, _wire);
   wiresend(ba & 0xFF, _wire);
   wiresend(ba >> 8, _wire);
@@ -209,16 +240,42 @@ void Adafruit_MCP23017::digitalWrite(uint8_t pin, uint8_t d) {
   uint8_t gpio;
   uint8_t bit = bitForPin(pin);
 
+  Serial << endl << endl << "DEBUG: digitalWrite" << endl << 
+  " - [IN], pin=" << pin << ", value=" << d << ", bit=" << bit;
+ 
   // read the current GPIO output latches
   uint8_t regAddr = regForPin(pin, MCP23017_OLATA, MCP23017_OLATB);
   gpio = readRegister(regAddr);
+  
+  Serial << endl << " - regAddr=" << regAddr << ", gpio=" << gpio;
+
+
+//  if (pin==7) {
+ //   if (d==0) gpio=128;
+  //  if (d==1) gpio=0;
+ // }
+
+  Serial << endl << " - bitWrite(gpio=," << gpio << ", bit=" << bit << ", value=" << d << ")";
+
+  if (pin==7) {
+    if (d==0) { 
+      gpio=128;
+    }
+    if (d==1) { 
+      gpio=0;
+    }
+  }
+
 
   // set the pin and direction
   bitWrite(gpio, bit, d);
 
   // write the new GPIO
   regAddr = regForPin(pin, MCP23017_GPIOA, MCP23017_GPIOB);
+
   writeRegister(regAddr, gpio);
+
+  Serial << endl << " - write the new GPIO: " << regAddr << ", gpio=" << gpio << endl;
 }
 
 /*!
@@ -238,7 +295,9 @@ void Adafruit_MCP23017::pullUp(uint8_t p, uint8_t d) {
 uint8_t Adafruit_MCP23017::digitalRead(uint8_t pin) {
   uint8_t bit = bitForPin(pin);
   uint8_t regAddr = regForPin(pin, MCP23017_GPIOA, MCP23017_GPIOB);
-  return (readRegister(regAddr) >> bit) & 0x1;
+  uint8_t ret = (readRegister(regAddr) >> bit) & 0x1;
+  Serial << endl << "DEBUG: [READ] = " << regAddr << ", PIN=" << pin << ", value=" << ret;
+  return ret;
 }
 
 /**
@@ -253,6 +312,8 @@ uint8_t Adafruit_MCP23017::digitalRead(uint8_t pin) {
  */
 void Adafruit_MCP23017::setupInterrupts(uint8_t mirroring, uint8_t openDrain,
                                         uint8_t polarity) {
+
+
   // configure the port A
   uint8_t ioconfValue = readRegister(MCP23017_IOCONA);
   bitWrite(ioconfValue, 6, mirroring);
@@ -302,6 +363,7 @@ void Adafruit_MCP23017::setupInterruptPin(uint8_t pin, uint8_t mode) {
 uint8_t Adafruit_MCP23017::getLastInterruptPin() {
   uint8_t intf;
 
+
   // try port A
   intf = readRegister(MCP23017_INTFA);
   for (int i = 0; i < 8; i++)
@@ -321,6 +383,7 @@ uint8_t Adafruit_MCP23017::getLastInterruptPin() {
  * @return Returns the value of the last interrupt pin
  */
 uint8_t Adafruit_MCP23017::getLastInterruptPinValue() {
+  
   uint8_t intPin = getLastInterruptPin();
   if (intPin != MCP23017_INT_ERR) {
     uint8_t intcapreg = regForPin(intPin, MCP23017_INTCAPA, MCP23017_INTCAPB);

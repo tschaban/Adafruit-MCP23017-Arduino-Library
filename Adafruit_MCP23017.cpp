@@ -70,14 +70,11 @@ uint8_t Adafruit_MCP23017::regForPin(uint8_t pin, uint8_t portAaddr,
  */
 uint8_t Adafruit_MCP23017::readRegister(uint8_t addr) {
   // read the current GPINTEN
-  Serial << endl << "   - begin transmition(i2cMCP23017addr=" << i2cMCP23017addr << "| i2caddr=" << i2caddr << ")";
-  _wire->beginTransmission(i2cMCP23017addr | i2caddr);
+    _wire->beginTransmission(i2cMCP23017addr | i2caddr);
   wiresend(addr, _wire);
-  Serial << endl << "   - addr=" << addr;
-  _wire->endTransmission();
+    _wire->endTransmission();
   _wire->requestFrom(i2cMCP23017addr | i2caddr, 1);
   uint8_t ret = wirerecv(_wire);
-    Serial << endl << "   - ret=" << ret;
   return ret;
 }
 
@@ -87,9 +84,6 @@ uint8_t Adafruit_MCP23017::readRegister(uint8_t addr) {
 void Adafruit_MCP23017::writeRegister(uint8_t regAddr, uint8_t regValue) {
   // Write the register
   _wire->beginTransmission(i2cMCP23017addr | i2caddr);
-
-Serial << endl << "#### WRITING ADDR="<< _HEX(i2cMCP23017addr | i2caddr) << ", REG=" << regAddr << " v=" << regValue;
-
   wiresend(regAddr, _wire);
   wiresend(regValue, _wire);
   _wire->endTransmission();
@@ -240,42 +234,17 @@ void Adafruit_MCP23017::digitalWrite(uint8_t pin, uint8_t d) {
   uint8_t gpio;
   uint8_t bit = bitForPin(pin);
 
-  Serial << endl << endl << "DEBUG: digitalWrite" << endl << 
-  " - [IN], pin=" << pin << ", value=" << d << ", bit=" << bit;
  
   // read the current GPIO output latches
   uint8_t regAddr = regForPin(pin, MCP23017_OLATA, MCP23017_OLATB);
   gpio = readRegister(regAddr);
-  
-  Serial << endl << " - regAddr=" << regAddr << ", gpio=" << gpio;
-
-
-//  if (pin==7) {
- //   if (d==0) gpio=128;
-  //  if (d==1) gpio=0;
- // }
-
-  Serial << endl << " - bitWrite(gpio=," << gpio << ", bit=" << bit << ", value=" << d << ")";
-
-  if (pin==7) {
-    if (d==0) { 
-      gpio=128;
-    }
-    if (d==1) { 
-      gpio=0;
-    }
-  }
-
-
-  // set the pin and direction
+    // set the pin and direction
   bitWrite(gpio, bit, d);
 
   // write the new GPIO
   regAddr = regForPin(pin, MCP23017_GPIOA, MCP23017_GPIOB);
 
   writeRegister(regAddr, gpio);
-
-  Serial << endl << " - write the new GPIO: " << regAddr << ", gpio=" << gpio << endl;
 }
 
 /*!
@@ -296,7 +265,7 @@ uint8_t Adafruit_MCP23017::digitalRead(uint8_t pin) {
   uint8_t bit = bitForPin(pin);
   uint8_t regAddr = regForPin(pin, MCP23017_GPIOA, MCP23017_GPIOB);
   uint8_t ret = (readRegister(regAddr) >> bit) & 0x1;
-  Serial << endl << "DEBUG: [READ] = " << regAddr << ", PIN=" << pin << ", value=" << ret;
+
   return ret;
 }
 
